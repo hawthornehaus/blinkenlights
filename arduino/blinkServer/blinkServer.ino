@@ -4,78 +4,148 @@
   
   Web server for the barduino--runs the lightboard.
   
-  Code adapted from Arduion ethernet webserver sample code.  
+  Code adapted from WebServer AjaxRGB sample code.  
  */
 
-#include <SPI.h>
-#include <Ethernet.h>
+/* Web_AjaxRGB.pde - example sketch for Webduino library */
 
-byte mac[] = { 
-  0x42, 0x00, 0x00, 0x00, 0x00, 0x01 };
+#include "SPI.h"
+#include "Ethernet.h"
+#include "WebServer.h"
 
-// Initialize the Ethernet server library
-// with the IP address and port you want to use 
-// (port 80 is default for HTTP):
-EthernetServer server(80);
+// CHANGE THIS TO YOUR OWN UNIQUE VALUE
+static uint8_t mac[6] = { 0x42, 0x00, 0x00, 0x00, 0x00, 0x01 };
 
-void setup() {
- // Open serial communications and wait for port to open:
-  Serial.begin(9600);
-   while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
+// CHANGE THIS TO MATCH YOUR HOST NETWORK
+
+/* all URLs on this server will start with /rgb because of how we
+ * define the PREFIX value.  We also will listen on port 80, the
+ * standard HTTP service port */
+#define PREFIX "/rgb"
+WebServer webserver(PREFIX, 80);
+
+#define RED_PIN 5
+#define GREEN_PIN 3
+#define BLUE_PIN 6
+
+int red = 0;            //integer for red darkness
+int blue = 0;           //integer for blue darkness
+int green = 0;          //integer for green darkness
+
+/* This command is set as the default command for the server.  It
+ * handles both GET and POST requests.  For a GET, it returns a simple
+ * page with some buttons.  For a POST, it saves the value posted to
+ * the red/green/blue variable, affecting the output of the speaker */
+void rgbCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
+{
+  if (type == WebServer::POST)
+  {
+    bool repeat;
+    char name[16], value[16];
+    do
+    {
+      /* readPOSTparam returns false when there are no more parameters
+       * to read from the input.  We pass in buffers for it to store
+       * the name and value strings along with the length of those
+       * buffers. */
+      repeat = server.readPOSTparam(name, 16, value, 16);
+
+      /* this is a standard string comparison function.  It returns 0
+       * when there's an exact match.  We're looking for a parameter
+       * named red/green/blue here. */
+      if (strcmp(name, "red") == 0)
+      {
+	/* use the STRing TO Unsigned Long function to turn the string
+	 * version of the color strength value into our integer red/green/blue
+	 * variable */
+        red = strtoul(value, NULL, 10);
+      }
+      if (strcmp(name, "green") == 0)
+      {
+        green = strtoul(value, NULL, 10);
+      }
+      if (strcmp(name, "blue") == 0)
+      {
+        blue = strtoul(value, NULL, 10);
+      }
+    } while (repeat);
+    
+    // after procesing the POST data, tell the web browser to reload
+    // the page using a GET method. 
+    server.httpSeeOther(PREFIX);
+//    Serial.print(name);
+//    Serial.println(value);
+
+    return;
   }
 
-  // start the Ethernet connection and the server:
-  Ethernet.begin(mac);
-  server.begin();
-  Serial.print("server is at ");
-  Serial.println(Ethernet.localIP());
+  /* for a GET or HEAD, send the standard "it's all OK headers" */
+  server.httpSuccess();
+
+  /* we don't output the body for a HEAD request */
+  if (type == WebServer::GET)
+  {
+    /* store the HTML in program memory using the P macro */
+    P(message) = 
+"<!DOCTYPE html><html><head>"
+  "<title>Webduino AJAX RGB Example</title>"
+  "<link href='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/base/jquery-ui.css' rel=stylesheet />"
+  "<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js'></script>"
+  "<script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js'></script>"
+  "<style> body { background: black; } #red, #green, #blue { margin: 10px; } #red { background: #f00; } #green { background: #0f0; } #blue { background: #00f; } </style>"
+  "<script>"
+
+// change color on mouse up, not while sliding (causes much less traffic to the Arduino):
+//    "function changeRGB(event, ui) { var id = $(this).attr('id'); if (id == 'red') $.post('/rgb', { red: ui.value } ); if (id == 'green') $.post('/rgb', { green: ui.value } ); if (id == 'blue') $.post('/rgb', { blue: ui.value } ); } "
+//    "$(document).ready(function(){ $('#red, #green, #blue').slider({min: 0, max:255, change:changeRGB}); });"
+
+// change color on slide and mouse up (causes more traffic to the Arduino):
+    "function changeRGB(event, ui) { jQuery.ajaxSetup({timeout: 110}); /*not to DDoS the Arduino, you might have to change this to some threshold value that fits your setup*/ var id = $(this).attr('id'); if (id == 'red') $.post('/rgb', { red: ui.value } ); if (id == 'green') $.post('/rgb', { green: ui.value } ); if (id == 'blue') $.post('/rgb', { blue: ui.value } ); } "
+    "$(document).ready(function(){ $('#red, #green, #blue').slider({min: 0, max:255, change:changeRGB, slide:changeRGB}); });"
+
+  "</script>"
+"</head>"
+"<body style='font-size:62.5%;'>"
+  "<div id=red></div>"
+  "<div id=green></div>"
+  "<div id=blue></div>"
+"</body>"
+"</html>";
+
+    server.printP(message);
+  }
 }
 
+void setup()
+{
+//  pinMode(RED_PIN, OUTPUT);
+//  pinMode(GREEN_PIN, OUTPUT);
+//  pinMode(BLUE_PIN, OUTPUT);
 
-void loop() {
-  // listen for incoming clients
-  EthernetClient client = server.available();
-  if (client) {
-    Serial.println("new client");
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        Serial.write(c);
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connnection: close");
-          client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-                    // add a meta refresh tag, so the browser pulls again every 5 seconds:
-          client.println("<meta http-equiv=\"refresh\" content=\"5\">");
-          client.println("<body><h1>Hawthorne Blink Server</h1></body>");
-          client.println("</html>");
-          break;
-        }
-        if (c == '\n') {
-          // you're starting a new line
-          currentLineIsBlank = true;
-        } 
-        else if (c != '\r') {
-          // you've gotten a character on the current line
-          currentLineIsBlank = false;
-        }
-      }
-    }
-    // give the web browser time to receive the data
-    delay(1);
-    // close the connection:
-    client.stop();
-    Serial.println("client disonnected");
-  }
+  Serial.begin(9600);
+
+  // setup the Ehternet library to talk to the Wiznet board
+  Ethernet.begin(mac);
+
+  /* register our default command (activated with the request of
+   * http://x.x.x.x/rgb */
+  webserver.setDefaultCommand(&rgbCmd);
+
+  /* start the server to wait for connections */
+  webserver.begin();
+}
+
+void loop()
+{
+  // process incoming connections one at a time forever
+  webserver.processConnection();
+  Serial.print(red);
+  Serial.print(" ");
+  Serial.print(green);
+  Serial.print(" ");
+  Serial.println(blue);
+//  analogWrite(RED_PIN, red);
+//  analogWrite(GREEN_PIN, green);
+//  analogWrite(BLUE_PIN, blue);
 }
 
