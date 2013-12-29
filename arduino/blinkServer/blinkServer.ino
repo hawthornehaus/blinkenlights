@@ -21,8 +21,9 @@ static uint8_t mac[6] = { 0x42, 0x00, 0x00, 0x00, 0x00, 0x01 };
 // Can be any valid output pins.
 // The colors of the wires may be totally different so
 // BE SURE TO CHECK YOUR PIXELS TO SEE WHICH WIRES TO USE!
-const static int dataPin = 52;
-const static int clockPin = 48;
+const static int dataPin = 34;
+const static int clockPin = 30;
+int needsUpdate = 0;
 // Don't forget to connect the ground wire to Arduino ground,
 // and the +5V wire to a +5V supply
 
@@ -34,9 +35,8 @@ const static int clockPin = 48;
 #define PREFIX "/rgb"
 WebServer webserver(PREFIX, 80);
 
-#define RED_PIN 5
-#define GREEN_PIN 3
-#define BLUE_PIN 6
+// Set the first variable to the NUMBER of pixels. 25 = 25 pixels in a row
+WS2801 strip = WS2801(100, dataPin, clockPin);
 
 int red = 0;            //integer for red darkness
 int blue = 0;           //integer for blue darkness
@@ -69,16 +69,32 @@ void rgbCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 	 * version of the color strength value into our integer red/green/blue
 	 * variable */
         red = strtoul(value, NULL, 10);
+        if (!needsUpdate)
+          needsUpdate = 1;
       }
       if (strcmp(name, "green") == 0)
       {
         green = strtoul(value, NULL, 10);
+        if (!needsUpdate)
+          needsUpdate = 1;
       }
       if (strcmp(name, "blue") == 0)
       {
         blue = strtoul(value, NULL, 10);
+        if (!needsUpdate)
+          needsUpdate = 1;
       }
     } while (repeat);
+      if (needsUpdate) 
+  {
+      Serial.print("\nChanging color...");
+//        red = 255;
+//  green = 255;
+//  blue = 255;
+      colorWipe(Color(red, green, blue), 0);
+//        colorWipe(Color(255, 0, 0), 0);
+      Serial.print("\ndone");
+  }
     
     // after procesing the POST data, tell the web browser to reload
     // the page using a GET method. 
@@ -106,13 +122,9 @@ void rgbCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
   "<script>"
 
 // change color on mouse up, not while sliding (causes much less traffic to the Arduino):
-//    "function changeRGB(event, ui) { var id = $(this).attr('id'); if (id == 'red') $.post('/rgb', { red: ui.value } ); if (id == 'green') $.post('/rgb', { green: ui.value } ); if (id == 'blue') $.post('/rgb', { blue: ui.value } ); } "
-//    "$(document).ready(function(){ $('#red, #green, #blue').slider({min: 0, max:255, change:changeRGB}); });"
-
-// change color on slide and mouse up (causes more traffic to the Arduino):
-    "function changeRGB(event, ui) { jQuery.ajaxSetup({timeout: 110}); /*not to DDoS the Arduino, you might have to change this to some threshold value that fits your setup*/ var id = $(this).attr('id'); if (id == 'red') $.post('/rgb', { red: ui.value } ); if (id == 'green') $.post('/rgb', { green: ui.value } ); if (id == 'blue') $.post('/rgb', { blue: ui.value } ); } "
-    "$(document).ready(function(){ $('#red, #green, #blue').slider({min: 0, max:255, change:changeRGB, slide:changeRGB}); });"
-
+    "function changeRGB(event, ui) { var id = $(this).attr('id'); if (id == 'red') $.post('/rgb', { red: ui.value } ); if (id == 'green') $.post('/rgb', { green: ui.value } ); if (id == 'blue') $.post('/rgb', { blue: ui.value } ); } "
+    "$(document).ready(function(){ $('#red, #green, #blue').slider({min: 0, max:255, change:changeRGB}); });"
+    
   "</script>"
 "</head>"
 "<body style='font-size:62.5%;'>"
@@ -153,11 +165,29 @@ void loop()
 {
   // process incoming connections one at a time forever
   webserver.processConnection();
-  Serial.print(red);
-  Serial.print(" ");
-  Serial.print(green);
-  Serial.print(" ");
-  Serial.println(blue);
-  colorWipe(Color(red, green, blue), 0)
+}
+
+void colorWipe(uint32_t c, uint8_t wait)
+{
+ int i;
+  
+  for (i=0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, c);
+      strip.show();
+      delay(wait);
+  }
+  needsUpdate = 0;
+}
+
+// Create a 24 bit color value from R,G,B
+uint32_t Color(byte r, byte g, byte b)
+{
+  uint32_t c;
+  c = r;
+  c <<= 8;
+  c |= g;
+  c <<= 8;
+  c |= b;
+  return c;
 }
 
