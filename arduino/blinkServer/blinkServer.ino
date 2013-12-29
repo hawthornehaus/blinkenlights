@@ -12,9 +12,19 @@
 #include "SPI.h"
 #include "Ethernet.h"
 #include "WebServer.h"
+#include "WS2801.h"
 
 // CHANGE THIS TO YOUR OWN UNIQUE VALUE
 static uint8_t mac[6] = { 0x42, 0x00, 0x00, 0x00, 0x00, 0x01 };
+
+// Choose which 2 pins you will use for output.
+// Can be any valid output pins.
+// The colors of the wires may be totally different so
+// BE SURE TO CHECK YOUR PIXELS TO SEE WHICH WIRES TO USE!
+const static int dataPin = 52;
+const static int clockPin = 48;
+// Don't forget to connect the ground wire to Arduino ground,
+// and the +5V wire to a +5V supply
 
 // CHANGE THIS TO MATCH YOUR HOST NETWORK
 
@@ -133,6 +143,10 @@ void setup()
 
   /* start the server to wait for connections */
   webserver.begin();
+
+  // Update LED contents, to start they are all 'off'
+  strip.begin();
+  strip.show();
 }
 
 void loop()
@@ -144,8 +158,6 @@ void loop()
   Serial.print(green);
   Serial.print(" ");
   Serial.println(blue);
-//  analogWrite(RED_PIN, red);
-//  analogWrite(GREEN_PIN, green);
-//  analogWrite(BLUE_PIN, blue);
+  colorWipe(Color(red, green, blue), 0)
 }
 
