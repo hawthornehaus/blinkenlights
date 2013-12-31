@@ -38,6 +38,294 @@ WebServer webserver(PREFIX, 80);
 // Set the first variable to the NUMBER of pixels. 25 = 25 pixels in a row
 WS2801 strip = WS2801(100, dataPin, clockPin);
 
+typedef struct 
+{
+  uint32_t g:8;
+  uint32_t r:8;
+  uint32_t p:8;
+  uint32_t b:8;
+} Color_t;
+
+typedef union Pixel
+{
+  Color_t c;
+  uint32_t u;
+} Pixel;
+
+const int nx = 10;
+const int ny = 10;
+
+Pixel frameBuffer[nx*ny];
+///*
+uint32_t image[100] = {
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ffff00,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ffff00,  0x00ffff00,  0x00ffff00,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ffff00,  0x00ffff00,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ffff00,  0x00ffff00,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,  0x00ff0000,
+};
+//*/
+
+uint32_t chara[40] = {
+  0x1, 0x1, 0x1, 0x1, 0x0,
+  0x1, 0x0, 0x0, 0x0, 0x1,
+  0x1, 0x1, 0x1, 0x1, 0x0,
+  0x1, 0x0, 0x0, 0x0, 0x1,
+  0x0, 0x1, 0x1, 0x1, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0,
+  0x0, 0x0, 0x0, 0x0, 0x0, 
+};
+
+uint32_t num_0[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_1[40] = {
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+};
+
+uint32_t num_2[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+};
+
+uint32_t num_3[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_4[40] = {
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_5[40] = {
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_6[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_6_new[40] = {
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_7[40] = {
+  0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+  0x00000000, 0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000,
+};
+
+uint32_t num_8[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_9[40] = {
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
+  0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
+};
+
+uint32_t num_10[40] = {
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00000000, 0x00FFFFFF,
+  0x00FFFFFF, 0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF,
+};
+
+void drawFrameBuffer()
+{
+  //int i,j;
+  // blit the framebuffer
+  //for (i = 0; i < nx; i+=2)
+  //{
+  //  for (j = 0; j < ny; j++)
+  //  {
+  //    strip.setPixelColor(i*ny+ j, frameBuffer[i*ny + j].u);    
+  //  }
+  //}
+  
+  //for (i = nx -1 ; i >= 0; i-=2)
+  //{
+  //  for (j = ny - 1; j >= 0; j--)
+  //  {
+  //    strip.setPixelColor((i)*ny+j, frameBuffer[(i+1)*ny - j - 1].u);
+  //  }
+  //}
+  int i;
+  for (i = 0; i < nx * ny; i++)
+  {
+     strip.setPixelColor((99 - i) + ((i/10)%2) * (((i % 10) * 2) - 9), frameBuffer[i].u); // Goddamn magic.   
+  }
+  
+  strip.show();
+}
+void drawChar(uint32_t tl_loc, uint32_t size_x, uint32_t size_y, uint32_t * char_image, uint32_t color)
+{
+  for (int i = 0; i < size_x * size_y; i++)
+    frameBuffer[tl_loc + i % size_x + ((i / size_x) * nx)].u = char_image[i] & color;
+  
+  return;
+}
+
+void drawBackgroundChar(uint32_t tl_loc, uint32_t size_x, uint32_t size_y, uint32_t * char_image)
+{
+  for (int i = 0; i < size_x * size_y; i++)
+    frameBuffer[tl_loc + i % size_x + ((i / size_x) * nx)].u =
+        char_image[i] & frameBuffer[tl_loc + i % size_x + ((i / size_x) * nx)].u;
+  
+  return;
+}
+
+void drawFontChar(uint32_t tl_loc, uint32_t * char_image, uint32_t color)
+{
+  drawChar(tl_loc, 5, 8, char_image, color); 
+}
+
+void drawBackgroundFontChar(uint32_t tl_loc, uint32_t * char_image)
+{
+  drawBackgroundChar(tl_loc, 5, 8, char_image); 
+}
+
+void drawBackground(uint32_t color)
+{
+  int i;
+  for (i = 0; i < nx * ny; i++)
+    frameBuffer[i].u = color;
+  
+}
+void Countdown(uint32_t start, uint32_t time_delay)
+{
+  int i;
+  for (i = start; i >= 0; i--)
+  {
+    displayNumber(i);
+    drawFrameBuffer();
+    delay(time_delay);
+  }
+  // Clear the LEDs.
+  drawBackground(0x00000000);
+}
+
+// 2-digit Maximum
+void displayNumber(uint32_t num)
+{
+   uint32_t * tens, * ones;
+   tens = number_switch(num / 10);
+   ones = number_switch(num % 10);
+   
+   drawFontChar(20, tens, 0x00FFFFFF);
+   drawFontChar(25, ones, 0x00FFFFFF);
+}
+
+uint32_t * number_switch(uint32_t num)
+{
+  switch(num)
+  {
+    case 0:
+      return num_0;
+    case 1:
+      return num_1;
+    case 2:
+      return num_2;
+    case 3:
+      return num_3;
+    case 4:
+      return num_4;
+    case 5:
+      return num_5;
+    case 6:
+      return num_6;
+    case 7:
+      return num_7;
+    case 8:
+      return num_8;
+    case 9:
+      return num_9;
+  } 
+}
+
 int red = 0;            //integer for red darkness
 int blue = 0;           //integer for blue darkness
 int green = 0;          //integer for green darkness
@@ -87,20 +375,15 @@ void rgbCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     } while (repeat);
       if (needsUpdate) 
   {
-      Serial.print("\nChanging color...");
-//        red = 255;
-//  green = 255;
-//  blue = 255;
-      colorWipe(Color(red, green, blue), 0);
-//        colorWipe(Color(255, 0, 0), 0);
-      Serial.print("\ndone");
+
+//      colorWipe(Color(red, green, blue), 0);
+    colorSet(Color(red,green,blue));
+
   }
     
     // after procesing the POST data, tell the web browser to reload
     // the page using a GET method. 
     server.httpSeeOther(PREFIX);
-//    Serial.print(name);
-//    Serial.println(value);
 
     return;
   }
@@ -140,12 +423,6 @@ void rgbCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 
 void setup()
 {
-//  pinMode(RED_PIN, OUTPUT);
-//  pinMode(GREEN_PIN, OUTPUT);
-//  pinMode(BLUE_PIN, OUTPUT);
-
-  Serial.begin(9600);
-
   // setup the Ehternet library to talk to the Wiznet board
   Ethernet.begin(mac);
 
@@ -178,11 +455,22 @@ void colorWipe(uint32_t c, uint8_t wait)
   }
   needsUpdate = 0;
 }
+void colorSet(uint32_t c)
+{
+ int i;
+  
+  for (i=0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, c);
+
+  }
+  strip.show();
+  needsUpdate = 0;
+}
 
 // Create a 24 bit color value from R,G,B
 uint32_t Color(byte r, byte g, byte b)
 {
-  uint32_t c;
+  uint32_t c = 0;
   c = r;
   c <<= 8;
   c |= g;

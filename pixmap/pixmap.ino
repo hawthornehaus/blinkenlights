@@ -62,7 +62,7 @@ uint32_t chara[40] = {
   0x0, 0x0, 0x0, 0x0, 0x0, 
 };
 
-uint32_t num_zero[40] = {
+uint32_t num_0[40] = {
   0x00000000, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00000000,
   0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
   0x00FFFFFF, 0x00000000, 0x00000000, 0x00000000, 0x00FFFFFF,
@@ -197,16 +197,13 @@ uint32_t num_10[40] = {
 void setup() {
     
   // init framebuffer
-  for (int i = 0; i < 100; i++) {
-    frameBuffer[i].u= image[i];
-//    frameBuffer[i].u = 0;
-  }
-  drawChar(25, 5, 8, num_10, 0x00ffffff);
   
   strip.begin();
 
   // Update LED contents, to start they are all 'off'
   strip.show();
+  
+//  Countdown(50, 1000);
 }
 
 
@@ -241,10 +238,16 @@ void drawFrameBuffer()
 
 void loop() {
 //    rainbow(1);
-
+  drawFontChar(10, num_2, 0x00FF0000);
+  drawFontChar(15, num_0, 0x00FF0000);
   drawFrameBuffer();
   //strip.setPixelColor(71, 0xFF0000FF);
   //strip.show();
+  delay(450);
+  
+  drawFontChar(10, num_1, 0x000000FF);
+  drawFontChar(15, num_4, 0x000000FF);
+  drawFrameBuffer();
   delay(450);
 }
 
@@ -284,9 +287,31 @@ void drawChar(uint32_t tl_loc, uint32_t size_x, uint32_t size_y, uint32_t * char
   return;
 }
 
+void drawBackgroundChar(uint32_t tl_loc, uint32_t size_x, uint32_t size_y, uint32_t * char_image)
+{
+  for (int i = 0; i < size_x * size_y; i++)
+    frameBuffer[tl_loc + i % size_x + ((i / size_x) * nx)].u =
+        char_image[i] & frameBuffer[tl_loc + i % size_x + ((i / size_x) * nx)].u;
+  
+  return;
+}
+
 void drawFontChar(uint32_t tl_loc, uint32_t * char_image, uint32_t color)
 {
   drawChar(tl_loc, 5, 8, char_image, color); 
+}
+
+void drawBackgroundFontChar(uint32_t tl_loc, uint32_t * char_image)
+{
+  drawBackgroundChar(tl_loc, 5, 8, char_image); 
+}
+
+void drawBackground(uint32_t color)
+{
+  int i;
+  for (i = 0; i < nx * ny; i++)
+    frameBuffer[i].u = color;
+  
 }
 
 //Input a value 0 to 255 to get a color value.
@@ -304,39 +329,53 @@ uint32_t Wheel(byte WheelPos)
   }
 }
 
-void Countdown()
+void Countdown(uint32_t start, uint32_t time_delay)
 {
-  drawFontChar(25, num_10, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_9, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_8, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_7, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_6, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_5, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_4, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_3, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_2, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_1, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
-  drawFontChar(25, num_0, 0x00FFFFFF);
-  drawFrameBuffer();
-  delay(1000);
+  int i;
+  for (i = start; i >= 0; i--)
+  {
+    displayNumber(i);
+    drawFrameBuffer();
+    delay(time_delay);
+  }
+  // Clear the LEDs.
+  drawBackground(0x00000000);
+}
+
+// 2-digit Maximum
+void displayNumber(uint32_t num)
+{
+   uint32_t * tens, * ones;
+   tens = number_switch(num / 10);
+   ones = number_switch(num % 10);
+   
+   drawFontChar(20, tens, 0x00FFFFFF);
+   drawFontChar(25, ones, 0x00FFFFFF);
+}
+
+uint32_t * number_switch(uint32_t num)
+{
+  switch(num)
+  {
+    case 0:
+      return num_0;
+    case 1:
+      return num_1;
+    case 2:
+      return num_2;
+    case 3:
+      return num_3;
+    case 4:
+      return num_4;
+    case 5:
+      return num_5;
+    case 6:
+      return num_6;
+    case 7:
+      return num_7;
+    case 8:
+      return num_8;
+    case 9:
+      return num_9;
+  } 
 }
